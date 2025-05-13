@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Equation Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #8b0000 0%, #006400 100%), url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Cpath d="M50 25c-10 0-15 10-15 15s5 10 15 10c10 0 15-10 15-15s-5-10-15-10zm0 30c-5 0-10-5-10-10s5-10 10-10 10 5 10 10-5 10-10 10z" fill="%23ffd700" fill-opacity="0.1"/%3E%3C/svg%3E');
+            background-blend-mode: overlay;
+            color: #fff;
+            overflow-x: hidden;
+            position: relative;
+        }
+        #petalCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+        header {
+            text-align: center;
+            padding: 2rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border-bottom: 2px solid #ffd700;
+        }
+        .title {
+            font-size: clamp(2.5rem, 6vw, 3.5rem);
+            font-family: 'Cinzel', serif;
+            color: transparent;
+            background: linear-gradient(90deg, #ff4040, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        }
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+        .container {
+            background: rgba(255, 245, 247, 0.9);
+            padding: clamp(1.5rem, 5vw, 2.5rem);
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 95%;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+        .container:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(255, 64, 64, 0.5);
+        }
+        .equation-container {
+            margin: 0 0 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 228, 225, 0.8);
+            border-radius: 15px;
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.1), 0 0 15px rgba(255, 64, 64, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+        }
+        .equation {
+            font-size: clamp(1.4rem, 4vw, 2rem);
+            font-family: "Cambria Math", "Latin Modern Math", serif;
+            color: #4a0e4e;
+            line-height: 1.6;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        .k-value {
+            color: #ff4040;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(255, 64, 64, 0.5);
+            animation: glowPulse 1.5s infinite ease-in-out;
+        }
+        .graph-container {
+            margin: 2rem 0;
+            padding: 0.5rem;
+            border-radius: 15px;
+            background: linear-gradient(45deg, rgba(255, 64, 64, 0.2), rgba(255, 215, 0, 0.2));
+            box-shadow: 0 0 15px rgba(255, 64, 64, 0.3);
+        }
+        canvas {
+            background: #fff9fb url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAJElEQVQYV2NkYGD4z8DAwMDI4NChoaEhg4PDh/8/AwMDAwMAOrsFKaYNEowAAAAASUVORK5CYII=') repeat;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 10px;
+            width: 100%;
+            height: clamp(300px, 50vw, 500px);
+            display: block;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        canvas.glow {
+            border-color: #ff4040;
+            box-shadow: 0 6px 25px rgba(255, 64, 64, 0.6);
+        }
+        .controls {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 228, 225, 0.8);
+            border-radius: 15px;
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.1), 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        .k-display {
+            font-size: clamp(1.2rem, 3vw, 1.6rem);
+            font-family: "Cambria Math", "Latin Modern Math", serif;
+            color: #ff4040;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(255, 64, 64, 0.4);
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 12px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #ff4040 0%, #ff4040 var(--fill-percent, 0%), #ffd700 var(--fill-percent, 0%), #ffd700 100%);
+            border-radius: 12px;
+            margin-top: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: clamp(24px, 6vw, 30px);
+            height: clamp(24px, 6vw, 30px);
+            background: linear-gradient(45deg, #ff4040, #ffd700);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 3px 15px rgba(255, 64, 64, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.8);
+            border: none;
+            transition: all 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 20px rgba(255, 64, 64, 0.7), 0 0 0 6px rgba(255, 255, 255, 0.9);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: clamp(24px, 6vw, 30px);
+            height: clamp(24px, 6vw, 30px);
+            background: linear-gradient(45deg, #ff4040, #ffd700);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 3px 15px rgba(255, 64, 64, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.8);
+            border: none;
+            transition: all 0.2s ease;
+        }
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 20px rgba(255, 64, 64, 0.7), 0 0 0 6px rgba(255, 255, 255, 0.9);
+        }
+        .slider-container {
+            position: relative;
+            width: 100%;
+        }
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+            color: #4a0e4e;
+            font-weight: 600;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border-top: 2px solid #ffd700;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes glowPulse {
+            0% { text-shadow: 0 1px 3px rgba(255, 64, 64, 0.5); }
+            50% { text-shadow: 0 1px 6px rgba(255, 64, 64, 0.8); }
+            100% { text-shadow: 0 1px 3px rgba(255, 64, 64, 0.5); }
+        }
+        @keyframes petalFall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        @media (max-width: 768px) {
+            header, footer { padding: 1rem 0.5rem; }
+            .container { padding: 1rem; }
+            .equation-container, .controls { padding: 1rem; }
+            canvas { height: clamp(250px, 60vw, 400px); }
+        }
+        @media (max-width: 480px) {
+            .title { font-size: 2rem; }
+            .equation { font-size: 1.2rem; }
+            .k-display { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="petalCanvas"></canvas>
+    <header>
+        <h1 class="title">Heart Equation Visualizer</h1>
+    </header>
+    <main>
+        <div class="container">
+            <div class="equation-container">
+                <div class="equation" id="dynamicEquation">
+                    y = |x|<sup>⅓</sup> + 0.9⋅sin(<span class="k-value">0.00</span>x)⋅√<span style="text-decoration: overline">3 − x²</span>
+                </div>
+            </div>
+            <div class="graph-container">
+                <canvas id="heartCanvas" aria-label="Graph of heart equation"></canvas>
+            </div>
+            <div class="controls">
+                <div class="k-display">
+                    Adjust k-value: <span id="kValue">0.00</span>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="kSlider" min="0" max="105" step="0.1" value="0" aria-label="Adjust k value for heart equation">
+                    <div class="slider-labels">
+                        <span>0</span>
+                        <span>105</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer></footer>
+
+    <script>
+        const petalCanvas = document.getElementById('petalCanvas');
+        const pCtx = petalCanvas.getContext('2d');
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+        const kValue = document.getElementById('kValue');
+        const kSlider = document.getElementById('kSlider');
+        const dynamicEquation = document.getElementById('dynamicEquation');
+        const kValueDisplay = document.querySelector('.k-value');
+
+        let k = 0;
+        let animationFrameId = null;
+
+        // Rose petal animation
+        const petals = [];
+        const petalCount = window.innerWidth < 768 ? 10 : 20;
+
+        function initPetals() {
+            petalCanvas.width = window.innerWidth;
+            petalCanvas.height = window.innerHeight;
+            for (let i = 0; i < petalCount; i++) {
+                petals.push({
+                    x: Math.random() * petalCanvas.width,
+                    y: -Math.random() * petalCanvas.height,
+                    size: Math.random() * 10 + 5,
+                    speedY: Math.random() * 2 + 1,
+                    rotation: Math.random() * 360,
+                    opacity: Math.random() * 0.5 + 0.5
+                });
+            }
+        }
+
+        function drawPetal(ctx, x, y, size, rotation) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size / 2, size / 4, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 64, 64, 0.7)';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function animatePetals() {
+            pCtx.clearRect(0, 0, petalCanvas.width, petalCanvas.height);
+            petals.forEach(p => {
+                p.y += p.speedY;
+                p.rotation += 1;
+                if (p.y > petalCanvas.height) {
+                    p.y = -p.size;
+                    p.x = Math.random() * petalCanvas.width;
+                }
+                drawPetal(pCtx, p.x, p.y, p.size, p.rotation);
+            });
+            requestAnimationFrame(animatePetals);
+        }
+
+        // Update k-value displays
+        function updateKValueDisplays() {
+            const formattedK = k.toFixed(2);
+            kValue.textContent = formattedK;
+            kValueDisplay.textContent = formattedK;
+            updateSliderFill();
+        }
+
+        function updateSliderFill() {
+            const percent = (k / 105) * 100;
+            kSlider.style.setProperty('--fill-percent', `${percent}%`);
+            canvas.classList.add('glow');
+            setTimeout(() => canvas.classList.remove('glow'), 300);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth - 20;
+            canvas.height = clamp(300, window.innerWidth * 0.5, 500);
+            petalCanvas.width = window.innerWidth;
+            petalCanvas.height = window.innerHeight;
+            drawHeart();
+        }
+
+        function clamp(min, val, max) {
+            return Math.max(min, Math.min(val, max));
+        }
+
+        function heartEquation(x, k) {
+            return Math.pow(Math.abs(x), 1/3) + 0.9 * Math.sqrt(3 - x*x) * Math.sin(k * x);
+        }
+
+        function drawPencilEffect(ctx, x1, y1, x2, y2, gradient) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            const jitter = 0.5;
+            const midX = x1 + (x2 - x1) / 2 + (Math.random() - 0.5) * jitter;
+            const midY = y1 + (y2 - y1) / 2 + (Math.random() - 0.5) * jitter;
+            ctx.quadraticCurveTo(midX, midY, x2, y2);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(255, 215, 0, 0.9)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.stroke();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
+        function drawSparkle(ctx, x, y) {
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x - 5, y);
+            ctx.lineTo(x + 5, y);
+            ctx.moveTo(x, y - 5);
+            ctx.lineTo(x, y + 5);
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function drawGridAndAxes(width, height, centerX, centerY, widthScale, heightScale, opacity = 1) {
+            ctx.strokeStyle = `rgba(255, 64, 64, ${0.1 * opacity})`;
+            ctx.lineWidth = 1;
+
+            for (let x = -3; x <= 3; x += 0.5) {
+                const px = centerX + x * widthScale;
+                ctx.beginPath();
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, height);
+                ctx.stroke();
+            }
+
+            for (let y = -2; y <= 2; y += 0.5) {
+                const py = centerY - y * heightScale;
+                ctx.beginPath();
+                ctx.moveTo(0, py);
+                ctx.lineTo(width, py);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = `rgba(255, 64, 64, ${0.3 * opacity})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+
+            ctx.fillStyle = `rgba(255, 64, 64, ${0.5 * opacity})`;
+            ctx.font = '14px Open Sans';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let x = -3; x <= 3; x += 1) {
+                if (x !== 0) {
+                    const px = centerX + x * widthScale;
+                    ctx.fillText(x.toFixed(0), px, centerY + 20);
+                }
+            }
+            for (let y = -2; y <= 2; y += 1) {
+                if (y !== 0) {
+                    const py = centerY - y * heightScale;
+                    ctx.fillText(y.toFixed(0), centerX + 20, py);
+                }
+            }
+        }
+
+        function animateHeart() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const widthScale = Math.min(width, height) * 0.22;
+            const heightScale = Math.min(width, height) * 0.15;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const startX = -Math.sqrt(3);
+            const endX = Math.sqrt(3);
+            const duration = 2000;
+            let startTime = null;
+            const step = 0.015;
+
+            function drawFrame(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = Math.min((timestamp - startTime) / duration, 1);
+                const currentX = startX + (endX - startX) * progress;
+
+                ctx.clearRect(0, 0, width, height);
+
+                drawGridAndAxes(width, height, centerX, centerY, widthScale, heightScale, progress);
+
+                const gradient = ctx.createLinearGradient(startX * widthScale + centerX, 0, currentX * widthScale + centerX, 0);
+                gradient.addColorStop(0, '#ff4040');
+                gradient.addColorStop(0.33, '#ff7f50');
+                gradient.addColorStop(0.66, '#ffd700');
+                gradient.addColorStop(1, '#ff4040');
+
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                let prevX, prevY;
+                let firstPoint = true;
+
+                for (let x = startX; x <= currentX; x += step) {
+                    try {
+                        const y = heartEquation(x, k);
+                        const px = centerX + x * widthScale;
+                        const py = centerY - y * heightScale;
+
+                        if (firstPoint) {
+                            ctx.beginPath();
+                            ctx.moveTo(px, py);
+                            firstPoint = false;
+                        } else {
+                            drawPencilEffect(ctx, prevX, prevY, px, py, gradient);
+                            if (Math.random() < 0.05) {
+                                drawSparkle(ctx, px, py);
+                            }
+                        }
+                        prevX = px;
+                        prevY = py;
+                    } catch (e) {
+                        firstPoint = true;
+                    }
+                }
+
+                if (progress < 1) {
+                    animationFrameId = requestAnimationFrame(drawFrame);
+                } else {
+                    updateKValueDisplays();
+                    animationFrameId = null;
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(drawFrame);
+        }
+
+        function drawHeartInstant() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const widthScale = Math.min(width, height) * 0.22;
+            const heightScale = Math.min(width, height) * 0.15;
+
+            ctx.clearRect(0, 0, width, height);
+
+            drawGridAndAxes(width, height, centerX, centerY, widthScale, heightScale);
+
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, '#ff4040');
+            gradient.addColorStop(0.5, '#ffd700');
+            gradient.addColorStop(1, '#ff4040');
+
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 4;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+
+            const step = 0.005;
+            let firstPoint = true;
+
+            for (let x = -Math.sqrt(3); x <= Math.sqrt(3); x += step) {
+                try {
+                    const y = heartEquation(x, k);
+                    const px = centerX + x * widthScale;
+                    const py = centerY - y * heightScale;
+
+                    if (firstPoint) {
+                        ctx.moveTo(px, py);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                } catch (e) {
+                    firstPoint = true;
+                }
+            }
+            ctx.stroke();
+
+            updateKValueDisplays();
+        }
+
+        function drawHeart() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            if (k === 0) {
+                animateHeart();
+            } else {
+                drawHeartInstant();
+            }
+        }
+
+        kSlider.addEventListener('input', function() {
+            k = parseFloat(this.value);
+            drawHeart();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        initPetals();
+        animatePetals();
+        resizeCanvas();
+    </script>
+</body>
+</html>
